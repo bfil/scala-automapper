@@ -12,8 +12,11 @@ trait AutoMapping {
     def asMap: Map[String, Any] = toMap(t)
     def mapTo[T2: Mappable] = t.asMap.as[T2]
     
-    def autoMapTo[T2](implicit mappable: AutoMappable[T, T2]): T2 = automap(t)
+    def autoMapTo[T2](implicit mappable: AutoMappable[T, T2]): T2 = AutoMapping.mapTo(t)
   }
   
-  private def automap[A, B](a: A)(implicit mappable: AutoMappable[A, B]): B = mappable.automap(a)
+}
+
+object AutoMapping {
+  private def mapTo[A, B](a: A)(implicit mappable: AutoMappable[A, B]): B = mappable.mapTo(a)
 }

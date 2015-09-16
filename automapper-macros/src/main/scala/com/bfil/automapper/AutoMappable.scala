@@ -4,7 +4,7 @@ import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
 trait AutoMappable[A, B] {
-  def automap(a: A): B
+  def mapTo(a: A): B
 }
 
 object AutoMappable {
@@ -13,7 +13,7 @@ object AutoMappable {
 
   def materializeAutoMappableImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context): c.Expr[AutoMappable[A, B]] = {
     import c.universe._
-    
+
     val sourceType = weakTypeOf[A]
     val destType = weakTypeOf[B]
     val destCompanion = destType.typeSymbol.companion
@@ -53,34 +53,36 @@ object AutoMappable {
       destFields.map { destField =>
 
         val sourceFieldOption = sourceFields.find(_.key == destField.key)
-        
-        if(sourceFieldOption.isDefined) {
-          
+
+        if (sourceFieldOption.isDefined) {
+
           val sourceField = sourceFieldOption.get
 
-          val value = if (sourceField.isCaseClass || sourceField.isOptionalCaseClass) {
-  
-            if (sourceField.isOptionalCaseClass) {
-              val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(destField.tpe), acc :+ sourceField)
-              q"optional(${destField.companion}(..$params))"
-            } else {
-              val params = extractParams(sourceField.tpe, destField.tpe, acc :+ sourceField)
-              q"${destField.companion}(..$params)"
-            }
-  
-          } else {
-  
-            (acc ++ List(sourceField)).foldLeft(Ident(TermName("a")): Tree) {
-              case (tree, field) =>
-                if (field.isOptionalCaseClass) Select(Select(tree, field.termName), TermName("get"))
-                else Select(tree, field.termName)
-            }
-  
+          val fieldSelector = (acc ++ List(sourceField)).foldLeft(Ident(TermName("a")): Tree) {
+            case (tree, field) => Select(tree, field.termName)
           }
-  
-          AssignOrNamedArg(Ident(sourceField.termName), value)
+
+          val value =
+            if (sourceField.tpe != destField.tpe && (sourceField.isCaseClass || sourceField.isOptionalCaseClass)) {
+
+              if (sourceField.isOptionalCaseClass) {
+                val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(destField.tpe), List.empty)
+                val value = q"${destField.companion}(..$params)"
+
+                val lambda = Apply(Select(fieldSelector, TermName("map")),
+                  List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
+
+                q"$lambda"
+              } else {
+                val params = extractParams(sourceField.tpe, destField.tpe, acc :+ sourceField)
+                q"${destField.companion}(..$params)"
+              }
+
+            } else fieldSelector
+
+          q"${destField.termName} = $value"
         } else {
-          if(destField.isOptional) AssignOrNamedArg(Ident(destField.termName), q"None")
+          if (destField.isOptional) AssignOrNamedArg(Ident(destField.termName), q"None")
           else throw new NoSuchElementException(s"${destField.key} is not a member of ${sourceType}")
         }
       }
@@ -91,8 +93,7 @@ object AutoMappable {
     def generateCode() =
       q"""
         new AutoMappable[$sourceType, $destType] {
-          def automap(a: $sourceType): $destType = $destCompanion(..$params)
-          private def optional[T](t: => T): Option[T] = scala.util.Try(t).toOption
+          def mapTo(a: $sourceType): $destType = $destCompanion(..$params)
         }
       """
 

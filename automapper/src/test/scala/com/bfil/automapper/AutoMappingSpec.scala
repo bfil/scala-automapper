@@ -4,17 +4,22 @@ import java.util.Date
 
 import org.specs2.mutable.Specification
 
-case class Nested(date: Date)
+case class Inner(what: String)
+case class Nested(date: Option[Date], inner: Option[Inner])
 case class Data(count: Int, nested: Option[Nested], optional: Option[String])
 case class Test(field: String, data: Data)
-case class AnotherTest(data: Data, field: String)
+
+case class AnotherNested(date: Option[Date], inner: Option[Inner])
+case class AnotherData(count: Int, nested: Option[AnotherNested], optional: Option[String])
+case class AnotherTest(data: AnotherData, field: String)
+
 case class SubsetTest(data: Data)
 case class CannotBeMappedTest(data: Data, unexpectedField: Exception)
 case class CanBeMappedWithNoneTest(data: Data, unexpectedField: Option[Exception])
 
 class AutoMappingSpec extends Specification with AutoMapping {
 
-  val currentDate = new Date()
+  val currentDate = Some(new Date())
 
   val map = Map(
     "field" -> "whatever",
@@ -28,16 +33,16 @@ class AutoMappingSpec extends Specification with AutoMapping {
     "data" -> Map(
       "count" -> 10))
 
-  val data = Data(10, Some(Nested(currentDate)), Some("string"))
+  val data = Data(10, Some(Nested(currentDate, Some(Inner("what")))), Some("string"))
+  val anotherData = AnotherData(10, Some(AnotherNested(currentDate, Some(Inner("what")))), Some("string"))
   val emptyData = Data(10, None, None)
+  val anotherEmptyData = AnotherData(10, None, None)
       
   val test = Test("whatever", data)
   val testWithNoOptionals = Test("whatever", emptyData)
 
-  val anotherTest = AnotherTest(data, "whatever")
-  val anotherTestWithNoOptionals = AnotherTest(emptyData, "whatever")
-  
-  val subsetTest = SubsetTest(data)
+  val anotherTest = AnotherTest(anotherData, "whatever")
+  val anotherTestWithNoOptionals = AnotherTest(anotherEmptyData, "whatever")
 
   "Map to Case Class" should {
 
@@ -93,29 +98,6 @@ class AutoMappingSpec extends Specification with AutoMapping {
 
     }
     
-    "have reasonable performance" in {
-      
-      val n = 1000000
-      
-      val manualStart = System.currentTimeMillis
-      (1 to n) foreach { i =>
-        AnotherTest(Data(test.data.count, Some(Nested(test.data.nested.get.date)), test.data.optional), test.field)
-      }
-      val manualElapsed = System.currentTimeMillis - manualStart
-      println(s"Manual mapping: ${manualElapsed}ms")
-      
-    
-      val autoStart = System.currentTimeMillis
-      (1 to n) foreach { i =>
-        test.mapTo[AnotherTest]
-      }
-      val autoElapsed = System.currentTimeMillis - autoStart
-      println(s"Auto mapping: ${autoElapsed}ms")
-      
-      autoElapsed should beGreaterThan(manualElapsed)
-
-    }
-
   }
   
   "Case Class Direct Auto Mapping" should {
@@ -128,36 +110,13 @@ class AutoMappingSpec extends Specification with AutoMapping {
     
     "be mapped correctly to a subset" in {
       
-      test.autoMapTo[SubsetTest] === subsetTest
+      test.autoMapTo[SubsetTest] === SubsetTest(data)
 
     }
 
     "be mapped correctly missing optionals" in {
 
       testWithNoOptionals.autoMapTo[AnotherTest] === anotherTestWithNoOptionals
-
-    }
-    
-    "have reasonable performance" in {
-      
-      val n = 100000000
-      
-      val manualStart = System.currentTimeMillis
-      (1 to n) foreach { i =>
-        AnotherTest(Data(test.data.count, Some(Nested(test.data.nested.get.date)), test.data.optional), test.field)
-      }
-      val manualElapsed = System.currentTimeMillis - manualStart
-      println(s"Direct Manual mapping: ${manualElapsed}ms")
-      
-    
-      val autoStart = System.currentTimeMillis
-      (1 to n) foreach { i =>
-        test.autoMapTo[AnotherTest]
-      }
-      val autoElapsed = System.currentTimeMillis - autoStart
-      println(s"Direct Auto mapping: ${autoElapsed}ms")
-      
-      autoElapsed should beLessThan(manualElapsed * 3)
 
     }
     
