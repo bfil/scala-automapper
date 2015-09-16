@@ -75,15 +75,38 @@ class AutoMappingSpec extends Specification with AutoMapping {
 
   "Case Class to Case Class" should {
 
-    "be mapped correctly with missing optionals" in {
-
+    "be mapped correctly with" in {
+      
       test.mapTo[AnotherTest] === anotherTest
 
     }
 
-    "be mapped correctly" in {
+    "be mapped correctly missing optionals" in {
 
       testWithNoOptionals.mapTo[AnotherTest] === anotherTestWithNoOptionals
+
+    }
+    
+    "have reasonable performance" in {
+      
+      val n = 1000000
+      
+      val manualStart = System.currentTimeMillis
+      (1 to n) foreach { i =>
+        AnotherTest(test.data, test.field)
+      }
+      val manualElapsed = System.currentTimeMillis - manualStart
+      println(s"Manual mapping: ${manualElapsed}ms")
+      
+    
+      val autoStart = System.currentTimeMillis
+      (1 to n) foreach { i =>
+        test.mapTo[AnotherTest]
+      }
+      val autoElapsed = System.currentTimeMillis - autoStart
+      println(s"Auto mapping: ${autoElapsed}ms")
+      
+      autoElapsed should beGreaterThan(manualElapsed)
 
     }
 
