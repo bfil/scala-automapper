@@ -41,9 +41,9 @@ object Mappable {
 
       val fields = tpe.decls.collectFirst {
         case m: MethodSymbol if m.isPrimaryConstructor => m
-      }.get.paramLists.head
+      }.get.paramLists.head.map(FieldInfo(_))
 
-      fields.map(FieldInfo(_)).map { field =>
+      fields.map { field =>
 
         if (field.isCaseClass || field.isOptionalCaseClass) {
 
