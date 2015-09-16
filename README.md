@@ -19,7 +19,7 @@ A library that uses macros to generate mappings between case classes.
 Setting up the dependencies
 ---------------------------
 
-__Scala AutoMapper__ is available at my [Nexus Repository](http://nexus.b-fil.com/nexus/content/groups/public/), and it is cross compiled and works only with Scala 2.11.
+__Scala AutoMapper__ is available at my [Nexus Repository](http://nexus.b-fil.com/nexus/content/groups/public/), it is available only for Scala 2.11.
 
 Using SBT, add the following dependency to your build file:
 
