@@ -17,12 +17,23 @@ class AutoMappingSpec extends Specification with AutoMapping {
     "field" -> "whatever",
     "data" -> Map(
       "count" -> 10,
-      "nested" -> Map("date" -> currentDate)))
+      "nested" -> Map("date" -> currentDate),
+      "optional" -> "string"))
 
-  val test = Test("whatever", Data(10, Some(Nested(currentDate)), None))
-  val anotherTest = AnotherTest(Data(10, Some(Nested(currentDate)), None), "whatever")
+  val mapWithNoOptionals = Map(
+    "field" -> "whatever",
+    "data" -> Map(
+      "count" -> 10))
 
-  "Case Class to Map" should {
+  val test = Test("whatever", Data(10, Some(Nested(currentDate)), Some("string")))
+  val testWithNoOptionals = Test("whatever", Data(10, None, None))
+
+  val anotherTest = AnotherTest(Data(10, Some(Nested(currentDate)), Some("string")), "whatever")
+  val anotherTestWithNoOptionals = AnotherTest(Data(10, None, None), "whatever")
+
+  private def optional[T](t: => T): Option[T] = scala.util.Try(t).toOption
+
+  "Map to Case Class" should {
 
     "be mapped correctly" in {
 
@@ -30,9 +41,23 @@ class AutoMappingSpec extends Specification with AutoMapping {
 
     }
 
+    "be mapped correctly with missing optionals" in {
+
+      mapWithNoOptionals.as[Test] === testWithNoOptionals
+
+    }
+    
+    "throw a NoSuchElementException if a non optional field is missing" in {
+      
+      val mapWithMissingField = map - "field"
+
+      mapWithMissingField.as[Test] should throwA[NoSuchElementException]
+
+    }
+
   }
 
-  "Map to Case Class" should {
+  "Case Class to Map" should {
 
     "be mapped correctly" in {
 
@@ -40,13 +65,25 @@ class AutoMappingSpec extends Specification with AutoMapping {
 
     }
 
+    "be mapped correctly with missing optionals" in {
+
+      testWithNoOptionals.asMap === mapWithNoOptionals
+
+    }
+
   }
 
   "Case Class to Case Class" should {
 
-    "be mapped correctly" in {
+    "be mapped correctly with missing optionals" in {
 
       test.mapTo[AnotherTest] === anotherTest
+
+    }
+
+    "be mapped correctly" in {
+
+      testWithNoOptionals.mapTo[AnotherTest] === anotherTestWithNoOptionals
 
     }
 
