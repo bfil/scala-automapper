@@ -3,15 +3,15 @@ package com.bfil.automapper
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
 
-trait AutoMappable[A, B] {
-  def mapTo(a: A): B
+trait Mapping[A, B] {
+  def map(a: A): B
 }
 
-object AutoMappable {
+object Mapping {
 
-  implicit def materializeAutoMappable[A, B]: AutoMappable[A, B] = macro materializeAutoMappableImpl[A, B]
+  implicit def materializeMapping[A, B]: Mapping[A, B] = macro materializeMappingImpl[A, B]
 
-  def materializeAutoMappableImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context): c.Expr[AutoMappable[A, B]] = {
+  def materializeMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context): c.Expr[Mapping[A, B]] = {
     import c.universe._
 
     val sourceType = weakTypeOf[A]
@@ -45,7 +45,7 @@ object AutoMappable {
 
     val mapOfStringToAny = List(AppliedTypeTree(Ident(TypeName("Map")), List(Ident(TypeName("String")), Ident(TypeName("Any")))))
 
-    def extractParams(sourceType: Type, destType: Type, acc: List[FieldInfo]): List[Tree] = {
+    def extractParams(sourceType: Type, destType: Type, parentFields: List[FieldInfo]): List[Tree] = {
 
       val sourceFields = getFields(sourceType)
       val destFields = getFields(destType)
@@ -58,7 +58,7 @@ object AutoMappable {
 
           val sourceField = sourceFieldOption.get
 
-          val fieldSelector = (acc ++ List(sourceField)).foldLeft(Ident(TermName("a")): Tree) {
+          val fieldSelector = (parentFields ++ List(sourceField)).foldLeft(Ident(TermName("a")): Tree) {
             case (tree, field) => Select(tree, field.termName)
           }
 
@@ -74,7 +74,7 @@ object AutoMappable {
 
                 q"$lambda"
               } else {
-                val params = extractParams(sourceField.tpe, destField.tpe, acc :+ sourceField)
+                val params = extractParams(sourceField.tpe, destField.tpe, parentFields :+ sourceField)
                 q"${destField.companion}(..$params)"
               }
 
@@ -92,13 +92,11 @@ object AutoMappable {
 
     def generateCode() =
       q"""
-        new AutoMappable[$sourceType, $destType] {
-          def mapTo(a: $sourceType): $destType = $destCompanion(..$params)
+        new Mapping[$sourceType, $destType] {
+          def map(a: $sourceType): $destType = $destCompanion(..$params)
         }
       """
 
-    // println(showCode(generateCode()))
-
-    c.Expr[AutoMappable[A, B]](generateCode())
+    c.Expr[Mapping[A, B]](generateCode())
   }
 }
