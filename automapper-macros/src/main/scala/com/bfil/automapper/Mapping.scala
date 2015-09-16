@@ -92,6 +92,7 @@ object Mapping {
 
     def generateCode() =
       q"""
+        import com.bfil.automapper.Mapping
         new Mapping[$sourceType, $destType] {
           def map(a: $sourceType): $destType = $destCompanion(..$params)
         }
