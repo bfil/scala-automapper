@@ -25,6 +25,8 @@ object Mapping {
 
     def isOptionSymbol(typeSymbol: Symbol) = typeSymbol == typeOf[Option[_]].typeSymbol
     def isCaseClassSymbol(typeSymbol: Symbol) = typeSymbol.isClass && typeSymbol.asClass.isCaseClass
+    def isIterableType(tpe: Type): Boolean = tpe.baseClasses.contains(typeOf[Iterable[_]].typeSymbol) && !isMapType(tpe)
+    def isMapType(tpe: Type): Boolean = tpe.baseClasses.contains(typeOf[Map[_, _]].typeSymbol)
 
     def getFields(tpe: Type): List[FieldInfo] =
       tpe.decls.collectFirst {
@@ -40,10 +42,14 @@ object Mapping {
       lazy val isCaseClass = isCaseClassSymbol(typeSymbol)
       lazy val isOptional = isOptionSymbol(typeSymbol)
       lazy val isOptionalCaseClass = isOptional && isCaseClassSymbol(getFirstTypeParam(tpe).typeSymbol)
-      lazy val companion = if (isOptional) getFirstTypeParam(tpe).typeSymbol.companion else typeSymbol.companion
+      lazy val isIterable = isIterableType(tpe)
+      lazy val isIterableCaseClass = isIterable && isCaseClassSymbol(getFirstTypeParam(tpe).typeSymbol)
+      lazy val isMap = isMapType(tpe)
+      lazy val companion = typeSymbol.companion
+      lazy val typeParamCompanion = 
+        if (isOptional || isIterable) getFirstTypeParam(tpe).typeSymbol.companion 
+        else throw new NoSuchElementException(s"$key is of type $tpe and does not have a type parameter")
     }
-
-    val mapOfStringToAny = List(AppliedTypeTree(Ident(TypeName("Map")), List(Ident(TypeName("String")), Ident(TypeName("Any")))))
 
     def extractParams(sourceType: Type, destType: Type, parentFields: List[FieldInfo]): List[Tree] = {
 
@@ -62,12 +68,12 @@ object Mapping {
             case (tree, field) => Select(tree, field.termName)
           }
 
-          val value =
-            if (sourceField.tpe != destField.tpe && (sourceField.isCaseClass || sourceField.isOptionalCaseClass)) {
+          val value = {
+            if (sourceField.tpe != destField.tpe && (sourceField.isCaseClass || sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass)) {
 
-              if (sourceField.isOptionalCaseClass) {
+              if (sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass) {
                 val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(destField.tpe), List.empty)
-                val value = q"${destField.companion}(..$params)"
+                val value = q"${destField.typeParamCompanion}(..$params)"
 
                 val lambda = Apply(Select(fieldSelector, TermName("map")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
@@ -79,10 +85,12 @@ object Mapping {
               }
 
             } else fieldSelector
+          }
 
           q"${destField.termName} = $value"
         } else {
           if (destField.isOptional) AssignOrNamedArg(Ident(destField.termName), q"None")
+          else if (destField.isIterable) AssignOrNamedArg(Ident(destField.termName), q"${destField.companion}.empty")
           else throw new NoSuchElementException(s"${destField.key} is not a member of ${sourceType}")
         }
       }
