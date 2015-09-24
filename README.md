@@ -7,12 +7,15 @@ A library that uses macros to generate mappings between case classes.
 
 - Nested case classes
 - Optional fields
-- Nested optional case classes
-- Compile time errors if case classes cannot be automatically mapped
+- Iterable fields
+- Map fields (only values)
+- Compile time errors for incomplete mappings
+- Dynamic field mapping using `DynamicMapping`
 
 #### Planned features
 
-- Fields renaming
+- Map keys mapping
+- Performance improvements for DynamicMapping (right now it's 2 to 3 times slower than a manual mapping)
 
 *Anything else you would like to see here? Feel free to open an issue or contribute!*
 
@@ -25,7 +28,7 @@ Using SBT, add the following dependency to your build file:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.bfil" %% "automapper" % "0.1.0"
+  "com.bfil" %% "automapper" % "0.2.0"
 )
 ```
 
@@ -41,7 +44,7 @@ If you need a snapshot dependency:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.bfil" %% "automapper" % "0.2.0-SNAPSHOT"
+  "com.bfil" %% "automapper" % "0.3.0-SNAPSHOT"
 )
 
 resolvers += "BFil Nexus Snapshots" at "http://nexus.b-fil.com/nexus/content/repositories/snapshots/";

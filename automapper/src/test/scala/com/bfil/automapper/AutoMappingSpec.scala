@@ -23,8 +23,6 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
 
     "map a case class to another case class with a subset of fields" in {
 
-      val source = SourceClass("field", sourceData, sourceValues, sourceDatas, None, None, sourceMap, sourceMapWithData, sourceLevel1)
-
       source.mapTo[TargetSubset] === TargetSubset(targetData)
 
     }

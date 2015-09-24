@@ -1,0 +1,9 @@
+Version 0.2.0 (2015-03-24)
+--------------------------
+- added support for Iterable Map fields mapping (only Map values, not keys)
+- added DynamicMapping to enable dynamic field mapping
+
+
+Version 0.1.0 (2015-09-16)
+--------------------------
+first public release
