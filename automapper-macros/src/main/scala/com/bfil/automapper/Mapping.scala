@@ -39,12 +39,13 @@ object Mapping {
     val sourceType = weakTypeOf[A]
     val targetType = weakTypeOf[B]
     val targetCompanion = targetType.typeSymbol.companion
-    
+
     val dynamicParams = dynamicMapping.tree.collect {
       case arg @ Apply(TypeApply(Select(Select(Ident(scala), tuple2), TermName("apply")), List(TypeTree(), TypeTree())), List(Literal(Constant(key: String)), impl)) => arg
     }
 
     def getFirstTypeParam(tpe: Type) = { val TypeRef(_, _, tps) = tpe; tps.head }
+    def getSecondTypeParam(tpe: Type) = { val TypeRef(_, _, tps) = tpe; tps.tail.head }
 
     def isOptionSymbol(typeSymbol: Symbol) = typeSymbol == typeOf[Option[_]].typeSymbol
     def isCaseClassSymbol(typeSymbol: Symbol) = typeSymbol.isClass && typeSymbol.asClass.isCaseClass
@@ -69,9 +70,12 @@ object Mapping {
       lazy val isIterableCaseClass = isIterable && isCaseClassSymbol(getFirstTypeParam(tpe).typeSymbol)
       lazy val isMap = isMapType(tpe)
       lazy val companion = typeSymbol.companion
-      lazy val typeParamCompanion =
+      lazy val firstTypeParamCompanion =
         if (isOptional || isIterable) getFirstTypeParam(tpe).typeSymbol.companion
         else throw new NoSuchElementException(s"$key is of type $tpe and does not have a type parameter")
+      lazy val secondTypeParamCompanion =
+        if (isMap) getSecondTypeParam(tpe).typeSymbol.companion
+        else throw new NoSuchElementException(s"$key is of type $tpe and does not have a second type parameter")
     }
 
     def extractParams(sourceType: Type, targetType: Type, parentFields: List[FieldInfo]): List[Tree] = {
@@ -91,16 +95,30 @@ object Mapping {
             case (tree, field) => Select(tree, field.termName)
           }
 
+          val sourceAndTargetHaveDifferentTypes = sourceField.tpe != targetField.tpe ||
+            (sourceField.isMap && getSecondTypeParam(sourceField.tpe) != getSecondTypeParam(targetField.tpe))
+
           val value = {
-            if (sourceField.tpe != targetField.tpe && (sourceField.isCaseClass || sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass)) {
+            if (sourceAndTargetHaveDifferentTypes &&
+              (sourceField.isCaseClass || sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass || sourceField.isMap)) {
 
               if (sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass) {
                 val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(targetField.tpe), List.empty)
-                val value = q"${targetField.typeParamCompanion}(..$params)"
+                val value = q"${targetField.firstTypeParamCompanion}(..$params)"
 
                 val lambda = Apply(Select(fieldSelector, TermName("map")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
 
+                q"$lambda"
+              } else if(sourceField.isMap) {
+                val params = extractParams(getSecondTypeParam(sourceField.tpe), getSecondTypeParam(targetField.tpe), List.empty)
+                val value = q"${targetField.secondTypeParamCompanion}(..$params)"
+
+                val lambda = Apply(Select(fieldSelector, TermName("mapValues")),
+                  List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
+                
+                println(showCode(lambda))
+                  
                 q"$lambda"
               } else {
                 val params = extractParams(sourceField.tpe, targetField.tpe, parentFields :+ sourceField)
@@ -119,26 +137,27 @@ object Mapping {
           if (dynamicField.isDefined) AssignOrNamedArg(Ident(targetField.termName), q"dynamicMapping.${targetField.termName}")
           else if (targetField.isOptional) AssignOrNamedArg(Ident(targetField.termName), q"None")
           else if (targetField.isIterable) AssignOrNamedArg(Ident(targetField.termName), q"${targetField.companion}.empty")
+          else if (targetField.isMap) AssignOrNamedArg(Ident(targetField.termName), q"Map.empty")
           else throw new NoSuchElementException(s"${targetField.key} is not a member of ${sourceType}")
         }
       }
     }
 
     val params = extractParams(sourceType, targetType, List.empty)
-    
-    def generateMappingCode() = 
-       if (dynamicParams.length > 0) q"val dynamicMapping = $dynamicMapping(a); $targetCompanion(..$params)"
+
+    def generateMappingCode() =
+      if (dynamicParams.length > 0) q"val dynamicMapping = $dynamicMapping(a); $targetCompanion(..$params)"
       else q"$targetCompanion(..$params)"
 
     def generateCode() =
-        q"""
-          import com.bfil.automapper.Mapping
-          new Mapping[$sourceType, $targetType] {
-            def map(a: $sourceType): $targetType = {
-              ${generateMappingCode()}
-            }
+      q"""
+        import com.bfil.automapper.Mapping
+        new Mapping[$sourceType, $targetType] {
+          def map(a: $sourceType): $targetType = {
+            ${generateMappingCode()}
           }
-        """
+        }
+      """
 
     c.Expr[Mapping[A, B]](generateCode())
   }
