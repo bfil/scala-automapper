@@ -78,7 +78,7 @@ object Mapping {
         else throw new NoSuchElementException(s"$key is of type $tpe and does not have a second type parameter")
     }
 
-    def extractParams(sourceType: Type, targetType: Type, parentFields: List[FieldInfo]): List[Tree] = {
+    def extractParams(sourceType: Type, targetType: Type, parentFields: List[FieldInfo], isRoot: Boolean = true): List[Tree] = {
 
       val sourceFields = getFields(sourceType)
       val targetFields = getFields(targetType)
@@ -87,7 +87,11 @@ object Mapping {
 
         val sourceFieldOption = sourceFields.find(_.key == targetField.key)
 
-        if (sourceFieldOption.isDefined) {
+        val targetFieldLiteral = Literal(Constant(targetField.key))
+        val dynamicField = dynamicParams.find(term => term.children(1).equalsStructure(targetFieldLiteral))
+
+        if (dynamicField.isDefined && isRoot) AssignOrNamedArg(Ident(targetField.termName), q"dynamicMapping.${targetField.termName}")
+        else if (sourceFieldOption.isDefined) {
 
           val sourceField = sourceFieldOption.get
 
@@ -103,24 +107,24 @@ object Mapping {
               (sourceField.isCaseClass || sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass || sourceField.isMap)) {
 
               if (sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass) {
-                val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(targetField.tpe), List.empty)
-                val value = q"${targetField.firstTypeParamCompanion}(..$params)"
+                val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(targetField.tpe), List.empty, false)
+                val value = q"${targetField.firstTypeParamCompanion.asTerm.name}(..$params)"
 
                 val lambda = Apply(Select(fieldSelector, TermName("map")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
 
                 q"$lambda"
-              } else if(sourceField.isMap) {
-                val params = extractParams(getSecondTypeParam(sourceField.tpe), getSecondTypeParam(targetField.tpe), List.empty)
-                val value = q"${targetField.secondTypeParamCompanion}(..$params)"
+              } else if (sourceField.isMap) {
+                val params = extractParams(getSecondTypeParam(sourceField.tpe), getSecondTypeParam(targetField.tpe), List.empty, false)
+                val value = q"${targetField.secondTypeParamCompanion.asTerm.name}(..$params)"
 
                 val lambda = Apply(Select(fieldSelector, TermName("mapValues")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
-                  
+
                 q"$lambda"
               } else {
-                val params = extractParams(sourceField.tpe, targetField.tpe, parentFields :+ sourceField)
-                q"${targetField.companion}(..$params)"
+                val params = extractParams(sourceField.tpe, targetField.tpe, parentFields :+ sourceField, false)
+                q"${targetField.companion.asTerm.name}(..$params)"
               }
 
             } else fieldSelector
@@ -128,24 +132,21 @@ object Mapping {
 
           q"${targetField.termName} = $value"
         } else {
+          def namedAssign(value: Tree) = AssignOrNamedArg(Ident(targetField.termName), value)
 
-          val targetFieldLiteral = Literal(Constant(targetField.key))
-          val dynamicField = dynamicParams.find(term => term.children(1).equalsStructure(targetFieldLiteral))
-
-          if (dynamicField.isDefined) AssignOrNamedArg(Ident(targetField.termName), q"dynamicMapping.${targetField.termName}")
-          else if (targetField.isOptional) AssignOrNamedArg(Ident(targetField.termName), q"None")
-          else if (targetField.isIterable) AssignOrNamedArg(Ident(targetField.termName), q"${targetField.companion}.empty")
-          else if (targetField.isMap) AssignOrNamedArg(Ident(targetField.termName), q"Map.empty")
-          else throw new NoSuchElementException(s"${targetField.key} is not a member of ${sourceType}")
+          if (targetField.isOptional) namedAssign(q"None")
+          else if (targetField.isIterable) namedAssign(q"${targetField.companion}.empty")
+          else if (targetField.isMap) namedAssign(q"Map.empty")
+          else EmptyTree
         }
-      }
+      }.filter(p => !p.isEmpty)
     }
 
     val params = extractParams(sourceType, targetType, List.empty)
 
     def generateMappingCode() =
-      if (dynamicParams.length > 0) q"val dynamicMapping = $dynamicMapping(a); $targetCompanion(..$params)"
-      else q"$targetCompanion(..$params)"
+      if (dynamicParams.length > 0) q"val dynamicMapping = $dynamicMapping(a); ${targetCompanion.asTerm.name}(..$params)"
+      else q"${targetCompanion.asTerm.name}(..$params)"
 
     def generateCode() =
       q"""

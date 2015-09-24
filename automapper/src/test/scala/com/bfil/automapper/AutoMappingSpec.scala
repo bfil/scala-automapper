@@ -44,6 +44,12 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
       source.mapTo[TargetWithUnexpectedMap] === TargetWithUnexpectedMap(targetData, Map.empty)
 
     }
+    
+    "map a case class to another case class by setting the default value for fields not present in the first class" in {
+    
+      source.mapTo[TargetWithDefaultValue] === TargetWithDefaultValue(targetData)
+
+    }
 
 //    "not compile if mapping cannot be generated" in {
 //
@@ -172,6 +178,7 @@ trait TestData {
   case class TargetWithOptionalUnexpectedField(data: TargetData, unexpectedField: Option[Exception])
   case class TargetWithUnexpectedList(data: TargetData, unexpectedList: List[Int])
   case class TargetWithUnexpectedMap(data: TargetData, unexpectedMap: Map[String, Int])
+  case class TargetWithDefaultValue(data: TargetData, default: String = "default")
   case class TargetWithDynamicMapping(renamedField: String, data: TargetData, total: Int)
 
   val sourceData = SourceData("label", 10)
