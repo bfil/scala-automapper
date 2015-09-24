@@ -10,4 +10,5 @@ trait AutoMapping {
 object AutoMapping extends AutoMapping {
   import scala.language.experimental.macros
   def generate[A, B]: Mapping[A, B] = macro Mapping.materializeMappingImpl[A, B]
+  def generateDynamic[A, B](dynamicMapping: A => DynamicMapping): Mapping[A, B] = macro Mapping.materializeDynamicMappingImpl[A, B]
 }

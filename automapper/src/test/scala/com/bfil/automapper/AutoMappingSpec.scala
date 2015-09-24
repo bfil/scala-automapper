@@ -6,62 +6,124 @@ import org.specs2.mutable.Specification
 
 class AutoMappingSpec extends Specification with AutoMapping with TestData {
 
-  "mapTo" should {
+  "map" should {
 
     "map a case class to another case class as expected" in {
-
-      test.mapTo[AnotherTest] === AnotherTest(anotherData, "whatever", List(AnotherInner("1"), AnotherInner("2")))
+      
+      source.mapTo[TargetClass] === target
 
     }
 
     "map a case class with missing optionals to another case class as expected" in {
+      
+      val sourceWithMissingOptionals = SourceClass("field", sourceData, sourceValues, sourceDatas, None, None, sourceLevel1)
+      val targetWithMissingOptionals = TargetClass("field", targetData, targetValues, targetDatas, None, None, targetLevel1)
 
-      testWithNoOptionals.mapTo[AnotherTest] === AnotherTest(anotherEmptyData, "whatever", List.empty)
+      sourceWithMissingOptionals.mapTo[TargetClass] === targetWithMissingOptionals
 
     }
 
     "map a case class to another case class with a subset of fields" in {
+      
+      val source = SourceClass("field", sourceData, sourceValues, sourceDatas, None, None, sourceLevel1)
 
-      test.mapTo[SubsetOfTest] === SubsetOfTest(data)
+      source.mapTo[TargetSubset] === TargetSubset(targetData)
 
     }
 
     "map a case class to another case class by setting None for fields not present in the first class" in {
 
-      test.mapTo[CanBeMappedWithNoneValues] === CanBeMappedWithNoneValues(data, None)
+      source.mapTo[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
 
     }
 
     "map a case class to another case class by setting an empty iterable for fields not present in the first class" in {
 
-      test.mapTo[CanBeMappedWithEmptyList] === CanBeMappedWithEmptyList(data, List.empty)
+      source.mapTo[TargetWithUnexpectedList] === TargetWithUnexpectedList(targetData, List.empty)
 
     }
 
 //    "not compile if mapping cannot be generated" in {
 //
-//      test.mapTo[CannotBeMapped]
+//      source.mapTo[TargetWithUnexpectedField]
 //
 //    }
 
   }
+  
+  "map using DynamicMapping" should {
+    
+    def sum(values: List[Int]) = values.sum
+    
+    "map a case class to another case class allowing dynamic field mapping" in {
+      
+      implicit val m = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
+        val values = source.list
+        DynamicMapping(renamedField = source.field, total = sum(values))
+      }
+      
+      source.mapTo[TargetWithDynamicMapping] === TargetWithDynamicMapping("field", targetData, 6)
+      
+    }
+    
+    "have reasonable performance" in {
+      
+      implicit val m = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
+        val values = source.list
+        DynamicMapping(renamedField = source.field, total = sum(values))
+      }
+      
+      def convert(source: SourceClass): TargetWithDynamicMapping = {
+        val values = source.list
+        TargetWithDynamicMapping(source.field, TargetData(source.data.label, source.data.value), sum(values))
+      }
+      
+      val numberOfConversions = 1000000
+      
+      val manualStart = System.currentTimeMillis
+      (1 to numberOfConversions) foreach { i =>
+        convert(source)
+      }
+      val manualElapsed = System.currentTimeMillis - manualStart
+      
+      val dynamicStart = System.currentTimeMillis
+      (1 to numberOfConversions) foreach { i =>
+        source.mapTo[TargetWithDynamicMapping]
+      }
+      val dynamicElapsed = System.currentTimeMillis - dynamicStart
+      
+      dynamicElapsed must beLessThan(manualElapsed * 3)
+      
+    }
+    
+//    "not compile if missing mappings have not been provided in the DynamicMapping" in {
+//      
+//      implicit val m = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
+//        DynamicMapping(renamedField = source.field)
+//      }
+//      
+//      source.mapTo[TargetWithDynamicMapping] === TargetWithDynamicMapping("field", targetData, 6)
+//      
+//    }
+    
+  }
 
-  "map" should {
+  "map using generated implicit mappings" should {
 
-    "map a case class to another case class as expected using the singleton object" in {
+    "map a case class to another case class as expected using the generated implicit mappings" in {
 
-      implicit val mapping = AutoMapping.generate[Test, AnotherTest]
+      implicit val mapping = AutoMapping.generate[SourceClass, TargetClass]
 
-      AutoMapping.map(test) === AnotherTest(anotherData, "whatever", List(AnotherInner("1"), AnotherInner("2")))
+      AutoMapping.map(source) === target
 
     }
 
-    "map a case class to another case class as expected using the singleton object and be able to disambiguate mappings" in {
+    "map a case class to another case class as expected using the generated implicit mappings and be able to disambiguate between multiple implicits" in {
 
-      implicit val mapping = AutoMapping.generate[Test, AnotherTest]
-      implicit val mapping2 = AutoMapping.generate[Test, SubsetOfTest]
+      implicit val mapping = AutoMapping.generate[SourceClass, TargetClass]
+      implicit val mappingForSubset = AutoMapping.generate[SourceClass, TargetSubset]
 
-      AutoMapping.map[Test, AnotherTest](test) === AnotherTest(anotherData, "whatever", List(AnotherInner("1"), AnotherInner("2")))
+      AutoMapping.map[SourceClass, TargetClass](source) === target
 
     }
 
@@ -70,30 +132,57 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
 }
 
 trait TestData {
+  
+  case class SourceClass(
+    field: String,
+    data: SourceData,
+    list: List[Int],
+    typedList: List[SourceData],
+    optional: Option[String],
+    typedOptional: Option[SourceData],
+    level1: SourceLevel1)
+    
+  case class SourceData(label: String, value: Int)
+  case class SourceLevel1(level2: Option[SourceLevel2])
+  case class SourceLevel2(treasure: String)
+  
+  case class TargetClass(
+    field: String,
+    data: TargetData,
+    list: List[Int],
+    typedList: List[TargetData],
+    optional: Option[String],
+    typedOptional: Option[TargetData],
+    level1: TargetLevel1)
+    
+  case class TargetData(label: String, value: Int)
+  case class TargetLevel1(level2: Option[TargetLevel2])
+  case class TargetLevel2(treasure: String)
 
   case class Inner(what: String)
-  case class Nested(date: Option[Date], inner: Option[Inner])
-  case class Data(count: Int, nested: Option[Nested], optional: Option[String], list: List[Int])
-  case class Test(field: String, data: Data, typedList: List[Inner])
 
-  case class AnotherInner(what: String)
-  case class AnotherNested(date: Option[Date], inner: Option[AnotherInner])
-  case class AnotherData(count: Int, nested: Option[AnotherNested], optional: Option[String], list: List[Int])
-  case class AnotherTest(data: AnotherData, field: String, typedList: List[AnotherInner])
+  case class TargetSubset(data: TargetData)
+  case class TargetWithUnexpectedField(data: TargetData, unexpectedField: Exception)
+  case class TargetWithOptionalUnexpectedField(data: TargetData, unexpectedField: Option[Exception])
+  case class TargetWithUnexpectedList(data: TargetData, unexpectedList: List[Int])
+  case class TargetWithDynamicMapping(renamedField: String, data: TargetData, total: Int)
 
-  case class SubsetOfTest(data: Data)
-  case class CannotBeMapped(data: Data, unexpectedField: Exception)
-  case class CanBeMappedWithNoneValues(data: Data, unexpectedField: Option[Exception])
-  case class CanBeMappedWithEmptyList(data: Data, unexpectedList: List[Int])
-
-  val currentDate = Some(new Date())
-
-  val data = Data(10, Some(Nested(currentDate, Some(Inner("what")))), Some("string"), List(1, 2, 3))
-  val anotherData = AnotherData(10, Some(AnotherNested(currentDate, Some(AnotherInner("what")))), Some("string"), List(1, 2, 3))
-  val emptyData = Data(10, None, None, List.empty)
-  val anotherEmptyData = AnotherData(10, None, None, List.empty)
-
-  val test = Test("whatever", data, List(Inner("1"), Inner("2")))
-  val testWithNoOptionals = Test("whatever", emptyData, List.empty)
+  val sourceData = SourceData("label", 10)
+  val sourceLevel2 = SourceLevel2("treasure")
+  val sourceLevel1 = SourceLevel1(Some(sourceLevel2))
+  
+  val sourceValues = List(1,2,3)
+  val sourceDatas = List(SourceData("label1", 1), SourceData("label1", 2), SourceData("label1", 3))
+  
+  val source = SourceClass("field", sourceData, sourceValues, sourceDatas, Some("optional"), Some(sourceData), sourceLevel1)
+  
+  val targetData = TargetData("label", 10)
+  val targetLevel2 = TargetLevel2("treasure")
+  val targetLevel1 = TargetLevel1(Some(targetLevel2))
+  
+  val targetValues = List(1,2,3)
+  val targetDatas = List(TargetData("label1", 1), TargetData("label1", 2), TargetData("label1", 3))
+  
+  val target = TargetClass("field", targetData, targetValues, targetDatas, Some("optional"), Some(targetData), targetLevel1)
 
 }
