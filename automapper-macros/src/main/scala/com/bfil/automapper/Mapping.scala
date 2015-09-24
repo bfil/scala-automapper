@@ -116,8 +116,6 @@ object Mapping {
 
                 val lambda = Apply(Select(fieldSelector, TermName("mapValues")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
-                
-                println(showCode(lambda))
                   
                 q"$lambda"
               } else {

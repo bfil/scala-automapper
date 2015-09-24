@@ -61,7 +61,7 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
 
     "map a case class to another case class allowing dynamic field mapping" in {
 
-      implicit val m = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
+      implicit val mapping = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
         val values = source.list
         DynamicMapping(renamedField = source.field, total = sum(values))
       }
@@ -72,7 +72,7 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
 
     "have reasonable performance" in {
 
-      implicit val m = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
+      implicit val mapping = AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
         val values = source.list
         DynamicMapping(renamedField = source.field, total = sum(values))
       }
