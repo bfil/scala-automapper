@@ -1,3 +1,11 @@
+Version 0.3.0 (2015-03-25)
+--------------------------
+- fixed issues with default values
+- giving dynamic mappings precedence over everything else
+- bug fix to only use dynamic mapping at the root level when generating the mapping
+- minor API changes
+
+
 Version 0.2.0 (2015-03-24)
 --------------------------
 - added support for Iterable Map fields mapping (only Map values, not keys)

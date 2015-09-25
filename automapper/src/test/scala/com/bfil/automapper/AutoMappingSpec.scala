@@ -193,8 +193,6 @@ trait TestData {
   case class TargetLevel1(level2: Option[TargetLevel2])
   case class TargetLevel2(treasure: String)
 
-  case class Inner(what: String)
-
   case class TargetSubset(data: TargetData)
   case class TargetWithUnexpectedField(data: TargetData, unexpectedField: Exception)
   case class TargetWithOptionalUnexpectedField(data: TargetData, unexpectedField: Option[Exception])
