@@ -9,6 +9,8 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
     "map a case class to another case class as expected" in {
 
       source.mapTo[TargetClass] === target
+      map(source).to[TargetClass] === target
+      AutoMapping.map(source).to[TargetClass] === target
 
     }
 
@@ -18,36 +20,48 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
       val targetWithMissingOptionals = TargetClass("field", targetData, targetValues, targetDatas, None, None, targetMap, targetMapWithData, targetLevel1)
 
       sourceWithMissingOptionals.mapTo[TargetClass] === targetWithMissingOptionals
+      map(sourceWithMissingOptionals).to[TargetClass] === targetWithMissingOptionals
+      AutoMapping.map(sourceWithMissingOptionals).to[TargetClass] === targetWithMissingOptionals
 
     }
 
     "map a case class to another case class with a subset of fields" in {
 
       source.mapTo[TargetSubset] === TargetSubset(targetData)
+      map(source).to[TargetSubset] === TargetSubset(targetData)
+      AutoMapping.map(source).to[TargetSubset] === TargetSubset(targetData)
 
     }
 
     "map a case class to another case class by setting None for fields not present in the first class" in {
 
       source.mapTo[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
+      map(source).to[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
+      AutoMapping.map(source).to[TargetWithOptionalUnexpectedField] === TargetWithOptionalUnexpectedField(targetData, None)
 
     }
 
     "map a case class to another case class by setting an empty iterable for fields not present in the first class" in {
 
       source.mapTo[TargetWithUnexpectedList] === TargetWithUnexpectedList(targetData, List.empty)
+      map(source).to[TargetWithUnexpectedList] === TargetWithUnexpectedList(targetData, List.empty)
+      AutoMapping.map(source).to[TargetWithUnexpectedList] === TargetWithUnexpectedList(targetData, List.empty)
 
     }
 
     "map a case class to another case class by setting an empty map for fields not present in the first class" in {
 
       source.mapTo[TargetWithUnexpectedMap] === TargetWithUnexpectedMap(targetData, Map.empty)
+      map(source).to[TargetWithUnexpectedMap] === TargetWithUnexpectedMap(targetData, Map.empty)
+      AutoMapping.map(source).to[TargetWithUnexpectedMap] === TargetWithUnexpectedMap(targetData, Map.empty)
 
     }
-    
+
     "map a case class to another case class by setting the default value for fields not present in the first class" in {
-    
+
       source.mapTo[TargetWithDefaultValue] === TargetWithDefaultValue(targetData)
+      map(source).to[TargetWithDefaultValue] === TargetWithDefaultValue(targetData)
+      AutoMapping.map(source).to[TargetWithDefaultValue] === TargetWithDefaultValue(targetData)
 
     }
 
@@ -70,7 +84,11 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
         DynamicMapping(renamedField = source.field, total = sum(values))
       }
 
-      source.mapTo[TargetWithDynamicMapping] === TargetWithDynamicMapping("field", targetData, 6)
+      val target = TargetWithDynamicMapping("field", targetData, 6)
+
+      source.mapTo[TargetWithDynamicMapping] === target
+      map(source).to[TargetWithDynamicMapping] === target
+      AutoMapping.map(source).to[TargetWithDynamicMapping] === target
 
     }
 
@@ -118,20 +136,24 @@ class AutoMappingSpec extends Specification with AutoMapping with TestData {
 
   "map using generated implicit mappings" should {
 
-    "map a case class to another case class as expected using the generated implicit mappings" in {
+    "map a case class to another case class as expected using the manually generated implicit mappings" in {
 
       implicit val mapping = AutoMapping.generate[SourceClass, TargetClass]
 
-      AutoMapping.map(source) === target
+      source.mapTo[TargetClass] === target
+      map(source).to[TargetClass] === target
+      AutoMapping.map(source).to[TargetClass] === target
 
     }
 
-    "map a case class to another case class as expected using the generated implicit mappings and be able to disambiguate between multiple implicits" in {
+    "map a case class to another case class as expected using the manually generated implicit mappings and be able to disambiguate between multiple implicit mappings" in {
 
       implicit val mapping = AutoMapping.generate[SourceClass, TargetClass]
       implicit val mappingForSubset = AutoMapping.generate[SourceClass, TargetSubset]
 
-      AutoMapping.map[SourceClass, TargetClass](source) === target
+      source.mapTo[TargetClass] === target
+      map(source).to[TargetClass] === target
+      AutoMapping.map(source).to[TargetClass] === target
 
     }
 
