@@ -123,7 +123,7 @@ trait MyMappings {
 	def sum(values: List[Int]) = values.sum
 	implicit val mapping = AutoMapping.generateDynamic[SourceClass, TargetClass] { source =>
 		val values = source.values
-		DynamicMappings(renamedField = source.field, total = sum(values))
+		DynamicMapping(renamedField = source.field, total = sum(values))
 	}
 }
 
