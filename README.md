@@ -84,8 +84,8 @@ trait MyMappings {
 }
 
 object Example extends MyMappings {
-	val target1 = map(source).to[TargetClass]
-	val target2 = map(source).to[AnotherClass]
+	val target1 = automap(source).to[TargetClass]
+	val target2 = automap(source).to[AnotherClass]
 }
 ```
 
