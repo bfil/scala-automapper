@@ -11,21 +11,52 @@ object Mapping {
 
   implicit def materializeMapping[A, B]: Mapping[A, B] = macro materializeMappingImpl[A, B]
 
-  def materializeMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context): c.Expr[Mapping[A, B]] = {
+  def materializeMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context): c.Expr[Mapping[A, B]] = generateMapping[A, B](c)(Seq.empty)
+
+  def materializeDynamicMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(name: c.Expr[String])(args: c.Expr[(String, Any)]*): c.Expr[B] = {
     import c.universe._
-    materializeDynamicMappingImpl[A, B](c)(c.Expr(reify(DynamicMapping.empty).tree))
+
+    val c.Expr(Literal(Constant(methodName))) = name
+
+    val dynamicParams = args.map {
+      _.tree.collect {
+        case arg @ Apply(TypeApply(Select(Select(Ident(scala), tuple2), TermName("apply")), List(TypeTree(), TypeTree())), List(Literal(Constant(key: String)), impl)) => arg
+      }
+    }.flatten
+
+    val mapping = methodName match {
+      case "dynamicallyTo" =>
+        generateMapping[A, B](c)(dynamicParams)
+      case methodName =>
+        c.error(name.tree.pos, s"not found value $methodName in com.bfil.automapper.PartialMapping")
+        generateMapping[A, B](c)(dynamicParams)
+    }
+
+    val source = c.macroApplication.collect {
+      case arg @ Apply(TypeApply(Select(Select(_, _), TermName("automap")), List(TypeTree())), List(source)) => source
+    }.headOption
+
+    if(!source.isDefined) c.error(c.enclosingPosition, "Unable to resolve source reference to be used for auto mapping")
+
+    def generateCode() = q"""${mapping}.map(${source.get}): ${weakTypeOf[B]}"""
+
+    c.Expr[B](generateCode())
   }
 
-  def materializeDynamicMappingImpl[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(dynamicMapping: c.Expr[A => DynamicMapping]): c.Expr[Mapping[A, B]] = {
+  private def generateMapping[A: c.WeakTypeTag, B: c.WeakTypeTag](c: Context)(dynamicParams: Seq[c.universe.Apply]): c.Expr[Mapping[A, B]] = {
     import c.universe._
+
+    import scala.util.control.ControlThrowable
+    class AutomapperException(val pos: Position, val msg: String) extends Throwable(msg) with ControlThrowable
 
     val sourceType = weakTypeOf[A]
     val targetType = weakTypeOf[B]
-    val targetCompanion = targetType.typeSymbol.companion
 
-    val dynamicParams = dynamicMapping.tree.collect {
-      case arg @ Apply(TypeApply(Select(Select(Ident(scala), tuple2), TermName("apply")), List(TypeTree(), TypeTree())), List(Literal(Constant(key: String)), impl)) => arg
+    if(targetType =:= typeOf[Nothing]) {
+      c.error(c.enclosingPosition, "Unable to infer target type for auto mapping")
     }
+
+    val targetCompanion = targetType.typeSymbol.companion
 
     def getFirstTypeParam(tpe: Type) = { val TypeRef(_, _, tps) = tpe; tps.head }
     def getSecondTypeParam(tpe: Type) = { val TypeRef(_, _, tps) = tpe; tps.tail.head }
@@ -38,7 +69,7 @@ object Mapping {
     def getFields(tpe: Type): List[FieldInfo] =
       tpe.decls.collectFirst {
         case m: MethodSymbol if m.isPrimaryConstructor => m
-      }.get.paramLists.head.map(FieldInfo(_))
+      }.map(_.paramLists.head.map(FieldInfo(_))).getOrElse(List.empty)
 
     case class FieldInfo(field: Symbol) {
       lazy val term = field.asTerm
@@ -71,10 +102,13 @@ object Mapping {
         val sourceFieldOption = sourceFields.find(_.key == targetField.key)
 
         val targetFieldLiteral = Literal(Constant(targetField.key))
-        val dynamicField = dynamicParams.find(term => term.children(1).equalsStructure(targetFieldLiteral))
+        val dynamicField = dynamicParams.find { term =>
+          term.children(1).equalsStructure(targetFieldLiteral)
+        }
 
-        if (dynamicField.isDefined && isRoot) AssignOrNamedArg(Ident(targetField.termName), q"dynamicMapping.${targetField.termName}")
-        else if (sourceFieldOption.isDefined) {
+        if (dynamicField.isDefined && isRoot) {
+          AssignOrNamedArg(Ident(targetField.termName), dynamicField.get.children(2))
+        } else if (sourceFieldOption.isDefined) {
 
           val sourceField = sourceFieldOption.get
 
@@ -91,7 +125,7 @@ object Mapping {
 
               if (sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass) {
                 val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(targetField.tpe), List.empty, false)
-                val value = q"${targetField.firstTypeParamCompanion.asTerm.name}(..$params)"
+                val value = q"${targetField.firstTypeParamCompanion}(..$params)"
 
                 val lambda = Apply(Select(fieldSelector, TermName("map")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
@@ -99,7 +133,7 @@ object Mapping {
                 q"$lambda"
               } else if (sourceField.isMap) {
                 val params = extractParams(getSecondTypeParam(sourceField.tpe), getSecondTypeParam(targetField.tpe), List.empty, false)
-                val value = q"${targetField.secondTypeParamCompanion.asTerm.name}(..$params)"
+                val value = q"${targetField.secondTypeParamCompanion}(..$params)"
 
                 val lambda = Apply(Select(fieldSelector, TermName("mapValues")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
@@ -107,7 +141,7 @@ object Mapping {
                 q"$lambda"
               } else {
                 val params = extractParams(sourceField.tpe, targetField.tpe, parentFields :+ sourceField, false)
-                q"${targetField.companion.asTerm.name}(..$params)"
+                q"${targetField.companion}(..$params)"
               }
 
             } else fieldSelector
@@ -127,16 +161,11 @@ object Mapping {
 
     val params = extractParams(sourceType, targetType, List.empty)
 
-    def generateMappingCode() =
-      if (dynamicParams.length > 0) q"val dynamicMapping = $dynamicMapping(a); ${targetCompanion.asTerm.name}(..$params)"
-      else q"${targetCompanion.asTerm.name}(..$params)"
-
     def generateCode() =
       q"""
-        import com.bfil.automapper.Mapping
-        new Mapping[$sourceType, $targetType] {
-          def map(a: $sourceType): $targetType = {
-            ${generateMappingCode()}
+        new Mapping[$sourceType, ${targetType}] {
+          def map(a: $sourceType): ${targetType} = {
+            $targetCompanion(..$params)
           }
         }
       """

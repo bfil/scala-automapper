@@ -11,26 +11,24 @@ A library that uses macros to generate mappings between case classes.
 - Map fields (only values)
 - Default values
 - Compile time errors for incomplete mappings
-- Dynamic field mapping using `DynamicMapping`
+- Dynamic field mapping
 
 #### Planned features
 
 - Map keys mapping
-- Performance improvements for `DynamicMapping` (right now it's 2 to 3 times slower than a manual mapping for simple mappings)
-- Improved API to decrease verbosity for dynamic mappings
 
 *Anything else you would like to see here? Feel free to open an issue or contribute!*
 
 Setting up the dependencies
 ---------------------------
 
-__Scala AutoMapper__ is available at my [Nexus Repository](http://nexus.b-fil.com/nexus/content/groups/public/), it is available only for Scala 2.11.
+__Scala AutoMapper__ is available at my [Nexus Repository](http://nexus.b-fil.com/nexus/content/groups/public/), it is available for Scala 2.12 and Scala 2.11.
 
 Using SBT, add the following dependency to your build file:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.bfil" %% "automapper" % "0.3.0"
+  "com.bfil" %% "automapper" % "0.4.0"
 )
 ```
 
@@ -46,7 +44,7 @@ If you need a snapshot dependency:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.bfil" %% "automapper" % "0.4.0-SNAPSHOT"
+  "com.bfil" %% "automapper" % "0.5.0-SNAPSHOT"
 )
 
 resolvers += "BFil Nexus Snapshots" at "http://nexus.b-fil.com/nexus/content/repositories/snapshots/";
@@ -65,16 +63,10 @@ case class TargetClass(label: String, value: Int)
 To map a source class instance to the target class use any of the following ways:
 
 ```scala
+import com.bfil.automapper._
+
 val source = SourceClass("label", 10)
-
-// Using the AutoMapping object
-val target = AutoMapping.map(source).to[TargetClass]
-
-// Using the AutoMapping trait
-object Example extends AutoMapping {
-	val target = map(source).to[TargetClass]
-	val target = source.mapTo[TargetClass]
-}
+val target = automap(source).to[TargetClass]
 ```
 
 ### Using implicit mappings
@@ -82,11 +74,13 @@ object Example extends AutoMapping {
 Implicit mappings can be defined separately and then used to map case classes
 
 ```scala
+import com.bfil.automapper._
+
 val source = SourceClass("label", 10)
 
 trait MyMappings {
-	implicit val mapping1 = AutoMapping.generate[SourceClass, TargetClass]
-	implicit val mapping2 = AutoMapping.generate[SourceClass, AnotherClass]
+	implicit val mapping1 = generateMapping[SourceClass, TargetClass]
+	implicit val mapping2 = generateMapping[SourceClass, AnotherClass]
 }
 
 object Example extends MyMappings {
@@ -103,36 +97,32 @@ If some of the fields cannot be mapped automatically a compilation error will oc
 
 ### Dynamic mappings
 
-It is pretty common to want to rename a field, or to have a calculated field into the target class that depend on the source class.
+It is pretty common to want to rename a field, or to have a calculated field into the target class that depend on the source class or other variables.
 
-`DynamicMapping` can be used to be able to partially map case classes with custom logic.
+A dynamic mapping can be used to be able to partially map case classes with custom logic.
 
-Look at the following example:
+Take a look at the following example:
 
 ```scala
 case class SourceClass(label: String, field: String, values: Int)
 case class TargetClass(label: String, renamedField: String, total: Int)
 ```
 
-The label field can be automatically mapped, but not the other 2, here is how to specify a `DynamicMapping` for those fields:
+The label field can be automatically mapped, but not the other 2, here is how you can specify a dynamic mapping for those fields:
 
 ```scala
-val source = SourceClass("label", "field", List(1,2,3))
+import com.bfil.automapper._
 
-trait MyMappings {
-	def sum(values: List[Int]) = values.sum
-	implicit val mapping = AutoMapping.generateDynamic[SourceClass, TargetClass] { source =>
-		val values = source.values
-		DynamicMapping(renamedField = source.field, total = sum(values))
-	}
-}
+val source = SourceClass("label", "field", List(1, 2, 3))
 
-object Example extends MyMappings {
-	val target = map(source).to[TargetClass]
-}
+def sum(values: List[Int]) = values.sum
+
+val target = automap(source).dynamicallyTo[TargetClass](
+  renamedField = source.field, total = sum(values)
+)
 ```
 
-The example is unnecessarily complex just to demonstrate that it's possible to write any type of custom logic for the dynamic mapping (or at least I haven't found issues so far).
+The example is unnecessarily complex just to demonstrate that it's possible to write any type of custom logic for the dynamic mapping (or at least I haven't found other issues so far).
 
 Note that we didn't have to provide a value for the `label` field, since it could be automatically mapped.
 
@@ -225,17 +215,7 @@ This is how the target class looks like:
 case class TargetWithDynamicMapping(renamedField: String, data: TargetData, total: Int)
 ```
 
-Here is how the dynamic mapping looks like:
-
-```scala
-def sum(values: List[Int]) = values.sum
-AutoMapping.generateDynamic[SourceClass, TargetWithDynamicMapping] { source =>
-  val values = source.list
-  DynamicMapping(renamedField = source.field, total = sum(values))
-}
-```
-
-And finally, here is the mapping generated by the macro:
+And here is the dynamic mapping generated by the macro:
 
 ```scala
 {
@@ -243,16 +223,11 @@ And finally, here is the mapping generated by the macro:
   {
     final class $anon extends Mapping[SourceClass, TargetWithDynamicMapping] {
       def map(a: SourceClass): TargetWithDynamicMapping = {
-        val dynamicMapping = ((source: SourceClass) => {
-          val values = source.list;
-          DynamicMapping.applyDynamicNamed("apply")(
-            ("renamedField", source.field),
-            ("total", sum(values)))
-        })(a);
         TargetWithDynamicMapping(
-          renamedField = dynamicMapping.renamedField,
+          renamedField = source.field,
           data = TargetData(label = a.data.label, value = a.data.value),
-          total = dynamicMapping.total)
+          total = sum(values)
+        )
       }
     };
     new $anon()
@@ -260,7 +235,7 @@ And finally, here is the mapping generated by the macro:
 }
 ```
 
-*I'm currently investigating how the `DynamicMapping` instance could be replaced with an automatically generated case class (which might or might not improve performance) though it is tricky to manipulate the `Expr` received as a dynamic mapping, so far I failed to achieve what I wanted, the compiler is not happy when trying to do complex `Tree` transformations.*
+Pretty cool. Huh?
 
 License
 -------

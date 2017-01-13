@@ -2,4 +2,4 @@ resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/release
 
 resolvers += "BFil Nexus Releases" at "http://nexus.b-fil.com/nexus/content/repositories/releases/"
 
-addSbtPlugin("com.bfil" % "sbt-bfil" % "0.2.1")
+addSbtPlugin("com.bfil" % "sbt-bfil" % "0.3.0")
