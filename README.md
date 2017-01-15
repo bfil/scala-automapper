@@ -115,6 +115,7 @@ import com.bfil.automapper._
 
 val source = SourceClass("label", "field", List(1, 2, 3))
 
+val values = source.list
 def sum(values: List[Int]) = values.sum
 
 val target = automap(source).dynamicallyTo[TargetClass](
