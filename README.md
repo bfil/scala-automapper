@@ -254,7 +254,7 @@ License
 
 This software is licensed under the Apache 2 license, quoted below.
 
-Copyright © 2015 Bruno Filippone <http://b-fil.com>
+Copyright © 2015-2017 Bruno Filippone <http://b-fil.com>
 
 Licensed under the Apache License, Version 2.0 (the "License"); you may not
 use this file except in compliance with the License. You may obtain a copy of
