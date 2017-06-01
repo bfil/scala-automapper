@@ -28,7 +28,7 @@ Using SBT, add the following dependency to your build file:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.bfil" %% "automapper" % "0.4.0"
+  "com.bfil" %% "automapper" % "0.5.0"
 )
 ```
 
@@ -44,7 +44,7 @@ If you need a snapshot dependency:
 
 ```scala
 libraryDependencies ++= Seq(
-  "com.bfil" %% "automapper" % "0.5.0-SNAPSHOT"
+  "com.bfil" %% "automapper" % "0.6.0-SNAPSHOT"
 )
 
 resolvers += "BFil Nexus Snapshots" at "http://nexus.b-fil.com/nexus/content/repositories/snapshots/";

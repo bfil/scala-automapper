@@ -1,3 +1,7 @@
+Version 0.5.0 (2017-06-01)
+--------------------------
+- fixed an issue related to incremental compilation
+
 Version 0.4.0 (2017-01-13)
 --------------------------
 - added Scala 2.12 support
