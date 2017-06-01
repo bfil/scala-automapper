@@ -121,9 +121,9 @@ object Mapping {
 
           val value = {
             if (sourceAndTargetHaveDifferentTypes &&
-              (sourceField.isCaseClass || sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass || sourceField.isMap)) {
+              (targetField.isCaseClass || targetField.isOptionalCaseClass || targetField.isIterableCaseClass || targetField.isMap)) {
 
-              if (sourceField.isOptionalCaseClass || sourceField.isIterableCaseClass) {
+              if (targetField.isOptionalCaseClass || targetField.isIterableCaseClass) {
                 val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(targetField.tpe), List.empty, false)
                 val value = q"${targetField.firstTypeParamCompanion}(..$params)"
 
@@ -131,7 +131,7 @@ object Mapping {
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
 
                 q"$lambda"
-              } else if (sourceField.isMap) {
+              } else if (targetField.isMap) {
                 val params = extractParams(getSecondTypeParam(sourceField.tpe), getSecondTypeParam(targetField.tpe), List.empty, false)
                 val value = q"${targetField.secondTypeParamCompanion}(..$params)"
 
