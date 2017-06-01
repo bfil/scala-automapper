@@ -5,7 +5,7 @@ import com.bfil.sbt._
 object ProjectBuild extends BFilBuild {
 
   lazy val root = BFilRootProject("root", file("."))
-    .settings(crossScalaVersions := Seq("2.12.1", "2.11.8"))
+    .settings(crossScalaVersions := Seq("2.12.2", "2.11.8"))
     .aggregate(automapperMacros, automapper)
 
   lazy val automapperMacros = BFilProject("automapper-macros", file("automapper-macros"))
@@ -23,7 +23,7 @@ object Dependencies {
   )
 
   val scalatest = Seq(
-    "org.scalatest" %% "scalatest" % "3.0.1"
+    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
   )
 
 }
