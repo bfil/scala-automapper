@@ -1,4 +1,4 @@
-package com.bfil.automapper
+package io.bfil.automapper
 
 import org.scalatest._
 

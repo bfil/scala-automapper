@@ -1,15 +1,23 @@
+Version 0.6.0 (2017-06-05)
+--------------------------
+- renamed organization and packages from com.bfil to io.bfil
+- published the library to Bintray
+
+
 Version 0.5.0 (2017-06-01)
 --------------------------
 - fixed an issue related to incremental compilation
 
+
 Version 0.4.0 (2017-01-13)
 --------------------------
 - added Scala 2.12 support
-- removed AutoMapping and DynamicMapping, import com.bfil.automapper._ instead
+- removed AutoMapping and DynamicMapping, import io.bfil.automapper._ instead
 - simplified API to: automap(source).to[Target] and automap(source).dynamicallyTo[Target](dynamicField = value)
 - improved type safety at compile time for dynamic mappings
 - removed Dynamic lookup runtime overhead by pushing it to the macro at compile time
 - switched tests to scalatest to support testing for compilation errors
+
 
 Version 0.3.0 (2015-09-25)
 --------------------------

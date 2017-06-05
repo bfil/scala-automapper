@@ -1,4 +1,4 @@
-package com.bfil.automapper
+package io.bfil.automapper
 
 import scala.language.experimental.macros
 import scala.reflect.macros.blackbox.Context
@@ -28,7 +28,7 @@ object Mapping {
       case "dynamicallyTo" =>
         generateMapping[A, B](c)(dynamicParams)
       case methodName =>
-        c.error(name.tree.pos, s"not found value $methodName in com.bfil.automapper.PartialMapping")
+        c.error(name.tree.pos, s"not found value $methodName in io.bfil.automapper.PartialMapping")
         generateMapping[A, B](c)(dynamicParams)
     }
 

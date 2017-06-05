@@ -1,4 +1,4 @@
-package com.bfil
+package io.bfil
 
 import scala.language.dynamics
 import scala.language.experimental.macros
