@@ -163,7 +163,7 @@ object Mapping {
 
     def generateCode() =
       q"""
-        new Mapping[$sourceType, ${targetType}] {
+        new io.bfil.automapper.Mapping[$sourceType, ${targetType}] {
           def map(a: $sourceType): ${targetType} = {
             $targetCompanion(..$params)
           }
