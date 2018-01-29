@@ -12,6 +12,7 @@ A library that uses macros to generate mappings between case classes.
 - Default values
 - Compile time errors for incomplete mappings
 - Dynamic field mapping
+- Polymorphic types fields
 
 #### Planned features
 
@@ -114,6 +115,41 @@ val target = automap(source).dynamicallyTo[TargetClass](
 The example is unnecessarily complex just to demonstrate that it's possible to write any type of custom logic for the dynamic mapping (or at least I haven't found other issues so far).
 
 Note that we didn't have to provide a value for the `label` field, since it could be automatically mapped.
+
+### Polymorphic types
+
+```scala
+trait SourceTrait
+case class SourceClassA(label: String, value: Int) extends SourceTrait
+case class SourceClassB(width: Int) extends SourceTrait
+
+trait TargetTrait
+case class TargetClassA(label: String, value: Int) extends TargetTrait
+case class TargetClassB(width: Int) extends TargetTrait
+
+case class SourceClass(field: SourceTrait)
+case class TargetClass(field: TargetTrait)
+```
+
+You need add an implicit conversion from `SourceTrait` to `TargetTrait` to scope:
+
+```scala
+import io.bfil.automapper._
+
+implicit def mapTrait(source: SourceTrait): TargetTrait = source match {
+  case a: SourceClassA => automap(a).to[TargetClassA]
+  case b: SourceClassB => automap(b).to[TargetClassB]
+}
+```
+
+Then you can map `SourceClass` to `TargetClass` and it'll work as expected:
+
+```scala
+import io.bfil.automapper._
+
+val source = SourceClass(SourceClassA("label", 10))
+val target = automap(source).to[TargetClass]
+```
 
 ### Mapping rules
 
