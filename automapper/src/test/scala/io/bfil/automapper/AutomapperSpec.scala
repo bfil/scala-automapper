@@ -123,8 +123,7 @@ class AutomapperSpec extends WordSpec with Matchers with TestData {
 
   }
 
-  "automap polymorphic type" should {
-
+  "automap polymorphic types" should {
 
     def mapPolymorphicTrait(source: SourcePolymorphicTrait): TargetPolymorphicTrait = source match {
 
@@ -138,18 +137,11 @@ class AutomapperSpec extends WordSpec with Matchers with TestData {
       implicit val conversion = mapPolymorphicTrait _
 
       automap(sourcePolymorphicA).to[TargetPolymorphicClass] === targetPolymorphicA
-
-    }
-
-    "map a polymorphic type field really" in {
-
-      implicit val conversion = mapPolymorphicTrait _
-
       automap(sourcePolymorphicB).to[TargetPolymorphicClass] === targetPolymorphicB
 
     }
 
-    "throw exception on unknown class" in {
+    "throw an exception for an unmapped polymorphic type" in {
 
       assertThrows[MatchError] {
 
@@ -161,7 +153,7 @@ class AutomapperSpec extends WordSpec with Matchers with TestData {
 
     }
 
-    "not compile without implicit conversion in scope" in {
+    "not compile without an implicit conversion in scope" in {
 
       "automap(sourcePolymorphicA).to[TargetPolymorphicClass]" shouldNot compile
 
