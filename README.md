@@ -12,7 +12,7 @@ A library that uses macros to generate mappings between case classes.
 - Default values
 - Compile time errors for incomplete mappings
 - Dynamic field mapping
-- Polymorphic types fields
+- Polymorphic types mapping (using implicit conversions)
 
 #### Planned features
 
@@ -116,7 +116,13 @@ The example is unnecessarily complex just to demonstrate that it's possible to w
 
 Note that we didn't have to provide a value for the `label` field, since it could be automatically mapped.
 
-### Polymorphic types
+### Implicit conversions & polymorphic types
+
+Implicit conversions can be used to fill in gaps between fields where necessary, helping to reduce boilerplate.
+
+Polymorphic types are one example where implicit conversions can help. Polymorphic types are not automatically mapped, but an implicit conversion between two traits can be provided in scope.
+
+Using the folling example:
 
 ```scala
 trait SourceTrait
@@ -131,7 +137,7 @@ case class SourceClass(field: SourceTrait)
 case class TargetClass(field: TargetTrait)
 ```
 
-You need add an implicit conversion from `SourceTrait` to `TargetTrait` to scope:
+You can define an implicit conversion from `SourceTrait` to `TargetTrait`:
 
 ```scala
 import io.bfil.automapper._
@@ -142,7 +148,7 @@ implicit def mapTrait(source: SourceTrait): TargetTrait = source match {
 }
 ```
 
-Then you can map `SourceClass` to `TargetClass` and it'll work as expected:
+With the implicit conversion between `SourceClass` to `TargetClass` in scope automapping two classes will work as expected:
 
 ```scala
 import io.bfil.automapper._
@@ -150,6 +156,8 @@ import io.bfil.automapper._
 val source = SourceClass(SourceClassA("label", 10))
 val target = automap(source).to[TargetClass]
 ```
+
+The same applies for any other implicit conversion available in scope.
 
 ### Mapping rules
 
