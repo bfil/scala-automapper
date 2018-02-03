@@ -123,6 +123,44 @@ class AutomapperSpec extends WordSpec with Matchers with TestData {
 
   }
 
+  "automap polymorphic types" should {
+
+    def mapPolymorphicTrait(source: SourcePolymorphicTrait): TargetPolymorphicTrait = source match {
+
+      case a: SourcePolymorphicClassA => automap(a).to[TargetPolymorphicClassA]
+      case b: SourcePolymorphicClassB => automap(b).to[TargetPolymorphicClassB]
+
+    }
+
+    "map a polymorphic type field" in {
+
+      implicit val conversion = mapPolymorphicTrait _
+
+      automap(sourcePolymorphicA).to[TargetPolymorphicClass] === targetPolymorphicA
+      automap(sourcePolymorphicB).to[TargetPolymorphicClass] === targetPolymorphicB
+
+    }
+
+    "throw an exception for an unmapped polymorphic type" in {
+
+      assertThrows[MatchError] {
+
+        implicit val conversion = mapPolymorphicTrait _
+
+        automap(sourcePolymorphicC).to[TargetPolymorphicClass]
+
+      }
+
+    }
+
+    "not compile without an implicit conversion in scope" in {
+
+      "automap(sourcePolymorphicA).to[TargetPolymorphicClass]" shouldNot compile
+
+    }
+
+  }
+
 }
 
 case class SourceClass(
@@ -139,6 +177,12 @@ case class SourceClass(
 case class SourceData(label: String, value: Int)
 case class SourceLevel1(level2: Option[SourceLevel2])
 case class SourceLevel2(treasure: String)
+
+trait SourcePolymorphicTrait
+case class SourcePolymorphicClassA(label: String, value: Int) extends SourcePolymorphicTrait
+case class SourcePolymorphicClassB(width: Int) extends SourcePolymorphicTrait
+case class SourcePolymorphicClassC(title: String) extends SourcePolymorphicTrait
+case class SourcePolymorphicClass(field: SourcePolymorphicTrait)
 
 case class TargetClass(
   field: String,
@@ -163,6 +207,11 @@ case class TargetWithUnexpectedMap(data: TargetData, unexpectedMap: Map[String, 
 case class TargetWithDefaultValue(data: TargetData, default: String = "default")
 case class TargetWithDynamicMapping(renamedField: String, data: TargetData, total: Int)
 
+trait TargetPolymorphicTrait
+case class TargetPolymorphicClassA(label: String, value: Int) extends TargetPolymorphicTrait
+case class TargetPolymorphicClassB(width: Int) extends TargetPolymorphicTrait
+case class TargetPolymorphicClass(field: TargetPolymorphicTrait)
+
 trait TestData {
 
   val sourceData = SourceData("label", 10)
@@ -182,6 +231,10 @@ trait TestData {
       sourceMap, sourceMapWithData,
       sourceLevel1)
 
+  val sourcePolymorphicA = SourcePolymorphicClass(SourcePolymorphicClassA("label", 10))
+  val sourcePolymorphicB = SourcePolymorphicClass(SourcePolymorphicClassB(11))
+  val sourcePolymorphicC = SourcePolymorphicClass(SourcePolymorphicClassC("title"))
+
   val targetData = TargetData("label", 10)
   val targetLevel2 = TargetLevel2("treasure")
   val targetLevel1 = TargetLevel1(Some(targetLevel2))
@@ -198,6 +251,9 @@ trait TestData {
       Some("optional"), Some(targetData),
       targetMap, targetMapWithData,
       targetLevel1)
+
+  val targetPolymorphicA = TargetPolymorphicClass(TargetPolymorphicClassA("label", 10))
+  val targetPolymorphicB = TargetPolymorphicClass(TargetPolymorphicClassB(11))
 
 }
 
