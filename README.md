@@ -93,7 +93,7 @@ A dynamic mapping can be used to be able to partially map case classes with cust
 Take a look at the following example:
 
 ```scala
-case class SourceClass(label: String, field: String, values: Int)
+case class SourceClass(label: String, field: String, list: List[Int])
 case class TargetClass(label: String, renamedField: String, total: Int)
 ```
 
