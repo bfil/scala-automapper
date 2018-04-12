@@ -18,11 +18,11 @@ object Mapping {
 
     val c.Expr(Literal(Constant(methodName))) = name
 
-    val dynamicParams = args.map {
+    val dynamicParams = args.flatMap {
       _.tree.collect {
         case arg @ Apply(TypeApply(Select(Select(Ident(scala), tuple2), TermName("apply")), List(TypeTree(), TypeTree())), List(Literal(Constant(key: String)), impl)) => arg
       }
-    }.flatten
+    }
 
     val mapping = methodName match {
       case "dynamicallyTo" =>
