@@ -18,11 +18,11 @@ object Mapping {
 
     val c.Expr(Literal(Constant(methodName))) = name
 
-    val dynamicParams = args.map {
+    val dynamicParams = args.flatMap {
       _.tree.collect {
         case arg @ Apply(TypeApply(Select(Select(Ident(scala), tuple2), TermName("apply")), List(TypeTree(), TypeTree())), List(Literal(Constant(key: String)), impl)) => arg
       }
-    }.flatten
+    }
 
     val mapping = methodName match {
       case "dynamicallyTo" =>
@@ -36,7 +36,7 @@ object Mapping {
       case arg @ Apply(TypeApply(Select(Select(_, _), TermName("automap")), List(TypeTree())), List(source)) => source
     }.headOption
 
-    if(!source.isDefined) c.error(c.enclosingPosition, "Unable to resolve source reference to be used for auto mapping")
+    if(source.isEmpty) c.error(c.enclosingPosition, "Unable to resolve source reference to be used for auto mapping")
 
     def generateCode() = q"""${mapping}.map(${source.get}): ${weakTypeOf[B]}"""
 
@@ -156,7 +156,7 @@ object Mapping {
           else if (targetField.isMap) namedAssign(q"Map.empty")
           else EmptyTree
         }
-      }.filter(p => !p.isEmpty)
+      }.filter(_.nonEmpty)
     }
 
     val params = extractParams(sourceType, targetType, List.empty)
