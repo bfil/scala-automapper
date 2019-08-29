@@ -38,7 +38,7 @@ object Mapping {
 
     if(source.isEmpty) c.error(c.enclosingPosition, "Unable to resolve source reference to be used for auto mapping")
 
-    def generateCode() = q"""${mapping}.map(${source.get}): ${weakTypeOf[B]}"""
+    def generateCode() = q"""$mapping.map(${source.get}): ${weakTypeOf[B]}"""
 
     c.Expr[B](generateCode())
   }
@@ -69,7 +69,7 @@ object Mapping {
     def getFields(tpe: Type): List[FieldInfo] =
       tpe.decls.collectFirst {
         case m: MethodSymbol if m.isPrimaryConstructor => m
-      }.map(_.paramLists.head.map(FieldInfo(_))).getOrElse(List.empty)
+      }.map(_.paramLists.head.map(FieldInfo)).getOrElse(List.empty)
 
     case class FieldInfo(field: Symbol) {
       lazy val term = field.asTerm
@@ -120,8 +120,7 @@ object Mapping {
             (sourceField.isMap && getSecondTypeParam(sourceField.tpe) != getSecondTypeParam(targetField.tpe))
 
           val value = {
-            if (sourceAndTargetHaveDifferentTypes &&
-              (targetField.isCaseClass || targetField.isOptionalCaseClass || targetField.isIterableCaseClass || targetField.isMap)) {
+            if (sourceAndTargetHaveDifferentTypes) {
 
               if (targetField.isOptionalCaseClass || targetField.isIterableCaseClass) {
                 val params = extractParams(getFirstTypeParam(sourceField.tpe), getFirstTypeParam(targetField.tpe), List.empty, false)
@@ -139,10 +138,10 @@ object Mapping {
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
 
                 q"$lambda"
-              } else {
+              } else if (targetField.isCaseClass) {
                 val params = extractParams(sourceField.tpe, targetField.tpe, parentFields :+ sourceField, false)
                 q"${targetField.companion}(..$params)"
-              }
+              } else fieldSelector
 
             } else fieldSelector
           }
@@ -163,8 +162,8 @@ object Mapping {
 
     def generateCode() =
       q"""
-        new io.bfil.automapper.Mapping[$sourceType, ${targetType}] {
-          def map(a: $sourceType): ${targetType} = {
+        new io.bfil.automapper.Mapping[$sourceType, $targetType] {
+          def map(a: $sourceType): $targetType = {
             $targetCompanion(..$params)
           }
         }

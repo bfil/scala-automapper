@@ -9,13 +9,13 @@ lazy val automapperMacros = Project("automapper-macros", file("automapper-macros
 
 lazy val automapper = Project("automapper", file("automapper"))
   .settings(settings, libraryDependencies ++= Seq(
-    "org.scalatest" %% "scalatest" % "3.0.1" % "test"
+    "org.scalatest" %% "scalatest" % "3.0.8" % "test"
   ))
   .dependsOn(automapperMacros)
 
 lazy val settings = Seq(
-  scalaVersion := "2.12.2",
-  crossScalaVersions := Seq("2.12.2", "2.11.8"),
+  scalaVersion := "2.12.8",
+  crossScalaVersions := Seq("2.12.8", "2.11.8"),
   organization := "io.bfil",
   organizationName := "Bruno Filippone",
   organizationHomepage := Some(url("http://bfil.io")),

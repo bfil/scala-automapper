@@ -1,3 +1,8 @@
+Version 0.6.2 (2019-08-29)
+--------------------------
+- fixed type mismatch errors caused by unknown Scala compiler internals
+
+
 Version 0.6.1 (2017-12-22)
 --------------------------
 - using the fully qualified Mapping trait in the macro to avoid possible clashes

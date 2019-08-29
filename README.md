@@ -29,7 +29,7 @@ Using SBT, add the following dependency to your build file:
 
 ```scala
 libraryDependencies ++= Seq(
-  "io.bfil" %% "automapper" % "0.6.1"
+  "io.bfil" %% "automapper" % "0.6.2"
 )
 ```
 

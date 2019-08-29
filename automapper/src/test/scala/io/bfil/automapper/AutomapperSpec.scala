@@ -53,7 +53,7 @@ class AutomapperSpec extends WordSpec with Matchers with TestData {
 
     "map a case class to another case class when using a qualified type" in {
 
-      automap(SomeObject.Source("value")).to[SomeObject.Target] === SomeObject.Target("value")
+      automap(SomeObject.Source("value", SomeObject.Data(1))).to[AnotherObject.Target] === AnotherObject.Target("value", AnotherObject.Data(1))
 
     }
 
@@ -258,6 +258,11 @@ trait TestData {
 }
 
 object SomeObject {
-  case class Source(value: String)
-  case class Target(value: String)
+  case class Source(value: String, data: Data)
+  case class Data(value: Int)
+}
+
+object AnotherObject {
+  case class Target(value: String, data: Data)
+  case class Data(value: Int)
 }
