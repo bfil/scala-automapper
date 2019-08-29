@@ -47,7 +47,7 @@ object Mapping {
     import c.universe._
 
     import scala.util.control.ControlThrowable
-    class AutomapperException(val pos: Position, val msg: String) extends Throwable(msg) with ControlThrowable
+    class AutomapperException(val pos: Position, val msg: String) extends ControlThrowable(msg)
 
     val sourceType = weakTypeOf[A]
     val targetType = weakTypeOf[B]
@@ -107,7 +107,7 @@ object Mapping {
         }
 
         if (dynamicField.isDefined && isRoot) {
-          AssignOrNamedArg(Ident(targetField.termName), dynamicField.get.children(2))
+          NamedArg(Ident(targetField.termName), dynamicField.get.children(2))
         } else if (sourceFieldOption.isDefined) {
 
           val sourceField = sourceFieldOption.get
@@ -137,7 +137,7 @@ object Mapping {
                 val lambda = Apply(Select(fieldSelector, TermName("mapValues")),
                   List(Function(List(ValDef(Modifiers(Flag.PARAM), TermName("a"), TypeTree(), EmptyTree)), value)))
 
-                q"$lambda"
+                q"$lambda.toMap"
               } else if (targetField.isCaseClass) {
                 val params = extractParams(sourceField.tpe, targetField.tpe, parentFields :+ sourceField, false)
                 q"${targetField.companion}(..$params)"
@@ -148,7 +148,7 @@ object Mapping {
 
           q"${targetField.termName} = $value"
         } else {
-          def namedAssign(value: Tree) = AssignOrNamedArg(Ident(targetField.termName), value)
+          def namedAssign(value: Tree) = NamedArg(Ident(targetField.termName), value)
 
           if (targetField.isOptional) namedAssign(q"None")
           else if (targetField.isIterable) namedAssign(q"${targetField.companion}.empty")

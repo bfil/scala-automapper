@@ -23,13 +23,17 @@ A library that uses macros to generate mappings between case classes.
 Setting up the dependencies
 ---------------------------
 
-__Scala AutoMapper__ is available on `Maven Central` (since version `0.6.0`), it supports Scala 2.12 and Scala 2.11.
+__Scala AutoMapper__ is available on `Maven Central` (since version `0.6.0`).
+
+For **Scala 2.13** use version `0.7.0`.
+
+For **Scala 2.12** and **Scala 2.11** use version `0.6.2`.
 
 Using SBT, add the following dependency to your build file:
 
 ```scala
 libraryDependencies ++= Seq(
-  "io.bfil" %% "automapper" % "0.6.2"
+  "io.bfil" %% "automapper" % "0.7.0"
 )
 ```
 

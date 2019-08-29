@@ -14,8 +14,8 @@ lazy val automapper = Project("automapper", file("automapper"))
   .dependsOn(automapperMacros)
 
 lazy val settings = Seq(
-  scalaVersion := "2.12.8",
-  crossScalaVersions := Seq("2.12.8", "2.11.8"),
+  scalaVersion := "2.13.0",
+  crossScalaVersions := Seq("2.13.0"),
   organization := "io.bfil",
   organizationName := "Bruno Filippone",
   organizationHomepage := Some(url("http://bfil.io")),
